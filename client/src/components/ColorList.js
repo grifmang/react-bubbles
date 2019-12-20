@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
+import { axiosWithAuth } from "./axiosWithAuth";
+import { useHistory } from "react-router-dom";
 
 const initialColor = {
   color: "",
@@ -7,9 +8,10 @@ const initialColor = {
 };
 
 const ColorList = ({ colors, updateColors }) => {
-  console.log(colors);
   const [editing, setEditing] = useState(false);
   const [colorToEdit, setColorToEdit] = useState(initialColor);
+  const [colorToEditId, setColorToEditId] = useState('');
+  const history = useHistory();
 
   const editColor = color => {
     setEditing(true);
@@ -18,13 +20,36 @@ const ColorList = ({ colors, updateColors }) => {
 
   const saveEdit = e => {
     e.preventDefault();
+    const colorElement = colors.filter(element => {
+      return colorToEditId === element.id
+    });
     // Make a put request to save your updated color
     // think about where will you get the id from...
     // where is is saved right now?
+    axiosWithAuth().put(`/colors/${colorElement.id}`, colorToEdit)
+    .then(response => {
+      colors.map((element, index) => {
+        if (element.id === colorToEditId) {
+          colors.splice(index, 1);
+          updateColors([
+            ...colors,
+            colorToEdit
+          ])
+        }
+      })
+      history.push('/')
+    })
   };
 
   const deleteColor = color => {
     // make a delete request to delete this color
+    axiosWithAuth().delete(`/colors/${color.id}`)
+    .then(response => {
+      axiosWithAuth().get('/colors')
+      .then(response => {
+        updateColors(response.data);
+      })
+    })
   };
 
   return (
@@ -32,7 +57,9 @@ const ColorList = ({ colors, updateColors }) => {
       <p>colors</p>
       <ul>
         {colors.map(color => (
-          <li key={color.color} onClick={() => editColor(color)}>
+          <li key={color.color} onClick={() => {
+            editColor(color)
+            setColorToEditId(color.id)}}>
             <span>
               <span className="delete" onClick={e => {
                     e.stopPropagation();
